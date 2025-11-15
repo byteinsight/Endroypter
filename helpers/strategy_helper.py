@@ -133,9 +133,29 @@ class StrategyHelper:
                             break
 
         # --- 6. Final legality check (every stint must fit in tank) ---
-        for laps in stint_laps:
-            assert laps * fuel_per_lap <= tank_capacity + 1e-6, \
-                f"Illegal stint: {laps} laps exceeds tank capacity"
+        max_legal_laps = math.floor(tank_capacity / fuel_per_lap)
+
+        illegal = []
+        for idx, laps in enumerate(stint_laps):
+            if laps > max_legal_laps:
+                illegal.append({
+                    "stint": idx + 1,
+                    "laps": laps,
+                    "max_legal": max_legal_laps,
+                    "fuel_saving_required": laps - max_legal_laps,
+                })
+
+        if illegal:
+            return {
+                "status": "fuel_limited",
+                "message": "One or more stints exceed tank capacity using this fuel_per_lap.",
+                "max_legal_laps": max_legal_laps,
+                "illegal_stints": illegal,
+                "suggestion": (
+                    "Use fuel_per_avg or reduce stint length (driver must fuel save)."
+                ),
+                "stint_laps": stint_laps,
+            }
 
         return {
             "stints": stints,
@@ -215,4 +235,61 @@ class StrategyHelper:
             "laps_for_free_tyres": laps_for_free_tyres,
         }
 
+    @staticmethod
+    def format_strategy_summary(s: dict) -> str:
+        """Return a list of formatted strategy summary strings."""
+        summary_str_list = [
+            f"fuel/lap: {s['fuel_per_lap']};",
+            f"laps/stint: {s['laps_per_stint']};",
+            f"stints: {s['stints']};",
+            f"stops: {s['stops']};",
+            f"last_stint_laps: {s['last_stint_laps']};",
+        ]
+        return " ".join(summary_str_list)
 
+    def format_stint_array_results(self, stints: list, fuel_per_avg) -> str:
+        """ Loop through the results and output each stint with its length and fuel required.
+        :param stints:
+        :param fuel_per_avg:
+        :return:
+        """
+        summary_str_list = []
+        for i, laps in enumerate(stints, start=1):
+            fuel = self.fuel_required_per_stint(laps, fuel_per_avg)
+            summary_str_list.append(f"Stint {i}: {laps} laps → {fuel:.2f} L")
+        return "\n".join(summary_str_list)
+
+    @staticmethod
+    def print_fuel_limited_warning(result: dict):
+        """
+        Pretty-print a warning if the stint plan is fuel-limited.
+        """
+        if result.get("status") != "fuel_limited":
+            return  # nothing to do
+
+        print("\n⚠️  Fuel-Limited Stint Configuration Detected")
+        print("--------------------------------------------------")
+
+        msg = result.get("message", "")
+        if msg:
+            print(f"{msg}\n")
+
+        max_laps = result.get("max_legal_laps")
+        if max_laps is not None:
+            print(f"Maximum legal laps per stint at this burn: {max_laps}")
+
+        illegal = result.get("illegal_stints", [])
+        if illegal:
+            print("\nStints exceeding fuel capacity:")
+            for item in illegal:
+                stint = item.get("stint")
+                laps = item.get("laps")
+                max_legal = item.get("max_legal")
+                fs = item.get("fuel_saving_required")
+                print(f"  • Stint {stint}: {laps} laps (max {max_legal}) -> needs {fs} lap(s) fuel saving")
+
+        suggestion = result.get("suggestion")
+        if suggestion:
+            print(f"\nSuggestion: {suggestion}")
+
+        print("--------------------------------------------------\n")
