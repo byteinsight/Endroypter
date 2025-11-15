@@ -1,3 +1,6 @@
+# System exclude paths
+.idea
+
 # Project exclude paths
 /models/
 /.idea/.gitignore

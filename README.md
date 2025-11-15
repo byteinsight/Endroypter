@@ -60,3 +60,7 @@ print(result)
 - Inputs are based on real-world endurance racing conventions (LMP2 / GT3 style).
 - All calculations assume clean laps without FCY or slow zones.
 - Designed for exploratory strategy work rather than live telemetry integration.
+
+## To Do
+- @todo streamline good results and warning message print output.
+- €todo write start_time script. 

@@ -171,7 +171,6 @@ class StrategyHelper:
         """
         return laps * fuel_per_lap
 
-
     @staticmethod
     def build_last_two_even_from_full_stint(
             total_laps: int,
@@ -180,54 +179,63 @@ class StrategyHelper:
             tyre_change_litres: float,
             tank_capacity: float,
     ):
-        """
-        Build stints by:
-          - taking (N-1) full max stints
-          - merging the last full stint + leftover laps
-          - splitting them into two even, tyre-compatible stints
-        """
-
-        # Minimum laps needed for a free tyre stop
         laps_for_free_tyres = math.ceil(tyre_change_litres / fuel_per_lap)
 
-        # Compute full stints and remainder
-        full_stints = total_laps // max_stint_laps  # e.g. 6
-        remainder = total_laps % max_stint_laps  # e.g. 5
+        full_stints = total_laps // max_stint_laps
+        remainder = total_laps % max_stint_laps
 
-        # Need at least one full stint + remainder to split
         if full_stints == 0:
-            raise ValueError("Not enough laps for even one full stint.")
+            return StrategyHelper._error(
+                "not_enough_laps",
+                {"message": "Not enough laps for even one full stint.",
+                 "total_laps": total_laps,
+                 "max_stint_laps": max_stint_laps}
+            )
 
-        # Combine the *last* full stint with the remainder
-        last_two_total = max_stint_laps + remainder  # e.g. 28 + 5 = 33
+        last_two_total = max_stint_laps + remainder
 
-        # Evenly split
         last_stint = last_two_total // 2
         penultimate_stint = last_two_total - last_stint
 
-        # Ensure penultimate >= last (optional aesthetic)
         if penultimate_stint < last_stint:
             penultimate_stint, last_stint = last_stint, penultimate_stint
 
-        # Tyre-change check
+        # Tyre-change legality
         if penultimate_stint < laps_for_free_tyres or last_stint < laps_for_free_tyres:
-            raise ValueError(
-                f"Cannot create tyre-change-compatible final stints. "
-                f"Needed ≥ {laps_for_free_tyres}, got {penultimate_stint}, {last_stint}"
+            return StrategyHelper._error(
+                "tyre_limited",
+                {
+                    "message": "Final two stints too short for a free tyre stop.",
+                    "laps_required": laps_for_free_tyres,
+                    "penultimate": penultimate_stint,
+                    "final": last_stint,
+                    "total_laps": total_laps,
+                    "max_stint_laps": max_stint_laps,
+                    "remainder": remainder,
+                },
             )
 
         # Fuel legality
-        for laps in (penultimate_stint, last_stint):
+        for name, laps in (("penultimate", penultimate_stint), ("final", last_stint)):
             if laps * fuel_per_lap > tank_capacity:
-                raise ValueError("Final stints exceed tank capacity.")
+                return StrategyHelper._error(
+                    "fuel_limited",
+                    {
+                        "message": f"{name.capitalize()} stint exceeds tank capacity.",
+                        "laps": laps,
+                        "fuel_per_lap": fuel_per_lap,
+                        "tank_capacity": tank_capacity,
+                        "fuel_required": laps * fuel_per_lap,
+                    },
+                )
 
-        # Build stint list: (full_stints - 1) max stints + 2 final stints
         stint_laps = (
                 [max_stint_laps] * (full_stints - 1)
                 + [penultimate_stint, last_stint]
         )
 
         return {
+            "ok": True,
             "stint_laps": stint_laps,
             "full_stints_used": full_stints - 1,
             "last_two_total": last_two_total,
@@ -293,3 +301,63 @@ class StrategyHelper:
             print(f"\nSuggestion: {suggestion}")
 
         print("--------------------------------------------------\n")
+
+    @staticmethod
+    def print_tyre_limited_warning(result: dict):
+        """
+        Pretty-print a warning if the stint plan is tyre-limited.
+        """
+        if result.get("status") != "tyre_limited":
+            return  # nothing to do
+
+        print("\n⚠️  Tyre-Limited Stint Configuration Detected")
+        print("--------------------------------------------------")
+
+        # Generic message
+        msg = result.get("message")
+        if msg:
+            print(f"{msg}\n")
+
+        required = result.get("laps_required")
+        pen = result.get("penultimate")
+        last = result.get("final")
+
+        if required is not None:
+            print(f"Minimum laps required for a tyre-change stint: {required}")
+
+        print("\nFinal two stints:")
+        print(f"  • Penultimate stint: {pen} laps")
+        print(f"  • Final stint:       {last} laps")
+
+        # If one or both fail the requirement, show which
+        print("\nIssues:")
+        if pen is not None and pen < required:
+            print(f"  • Penultimate stint too short by {required - pen} lap(s).")
+        if last is not None and last < required:
+            print(f"  • Final stint too short by {required - last} lap(s).")
+
+        # Optional helpful info if provided
+        rem = result.get("remainder")
+        msl = result.get("max_stint_laps")
+        tot = result.get("total_laps")
+
+        if None not in (tot, msl, rem):
+            print("\nContext:")
+            print(f"  • Total race laps:   {tot}")
+            print(f"  • Max stint laps:    {msl}")
+            print(f"  • Remainder laps:    {rem}")
+
+        suggestion = result.get("suggestion")
+        if suggestion:
+            print(f"\nSuggestion: {suggestion}")
+
+        print("--------------------------------------------------\n")
+
+    @staticmethod
+    def _error(status: str, details: dict):
+        """Return a friendly error dict instead of raising."""
+        return {
+            "ok": False,
+            "status": status,
+            "details": details,
+        }
