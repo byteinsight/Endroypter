@@ -361,3 +361,58 @@ class StrategyHelper:
             "status": status,
             "details": details,
         }
+
+    def evaluate_first_stint_x(x,
+                               total_laps,
+                               tank_capacity,
+                               fuel_per_lap,
+                               lap_time_avg,
+                               pit_delta,
+                               refuelling_rate,
+                               tyre_change_time):
+        # 1) Baseline
+        baseline = strategy_helper.calculate_stint_plan(
+            total_laps=total_laps,
+            tank_capacity=tank_capacity,
+            fuel_per_lap=fuel_per_lap,
+            tyre_change_litres=tyre_change_litres,
+        )
+        baseline_stints = baseline["stint_laps"]
+        baseline_time = total_race_time(
+            baseline_stints,
+            lap_time_avg,
+            pit_delta,
+            refuelling_rate,
+            tyre_change_time,
+            fuel_per_lap,
+        )
+
+        # 2) Forced-x plan
+        alt_stints = build_plan_with_first_stint_x(
+            x,
+            total_laps,
+            baseline_stints,
+            tank_capacity,
+            fuel_per_lap,
+        )
+        alt_time = total_race_time(
+            alt_stints,
+            lap_time_avg,
+            pit_delta,
+            refuelling_rate,
+            tyre_change_time,
+            fuel_per_lap,
+        )
+
+        return {
+            "x": x,
+            "baseline_stints": baseline_stints,
+            "alt_stints": alt_stints,
+            "baseline_time_s": baseline_time,
+            "alt_time_s": alt_time,
+            "delta_time_s": alt_time - baseline_time,
+            "baseline_stops": len(baseline_stints) - 1,
+            "alt_stops": len(alt_stints) - 1,
+        }
+
+

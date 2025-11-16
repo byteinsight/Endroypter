@@ -1,12 +1,7 @@
 # System exclude paths
-.idea
+/.idea/
 
 # Project exclude paths
 /models/
-/.idea/.gitignore
-/.idea/Endroypter.iml
-/.idea/misc.xml
-/.idea/modules.xml
-/.idea/inspectionProfiles/profiles_settings.xml
-/.idea/inspectionProfiles/Project_Default.xml
-/.idea/vcs.xml
+/build/
+/dist/
