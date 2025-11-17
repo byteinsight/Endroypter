@@ -17,7 +17,7 @@ def main():
     dpg.create_context()
 
     # Create the OS-level viewport/window
-    dpg.create_viewport(title="iRaceInsight V2.0", width=1200, height=1000)
+    dpg.create_viewport(title="iRaceInsight V2.0", width=1200, height=820)
 
     # Apply custom theme before building UI
     create_theme()

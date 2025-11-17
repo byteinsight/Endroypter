@@ -23,7 +23,7 @@ class CrewChiefPanel(BasePanel):
         [
             {"label": "Service Time (s)", "tag": "service_time", "default": 42.00},
             {"label": "Tyre Change (s)", "tag": "tyre_change_time", "default": 21.00},
-            {"label": "Dela Time (s)", "tag": "total_pit_time", "default": 62.00},
+            {"label": "Delta Time (s)", "tag": "total_pit_time", "default": 62.00},
         ],
         [
             {"label": "PL Loss (s)", "tag": "pit_lane_loss", "default": 0.00},
@@ -81,12 +81,16 @@ class CrewChiefPanel(BasePanel):
         ],
     ]
 
-    BASIC_EQUAL_STRATEGY_RESULT_GRID = [
-        [{"section": "Equal Stint Strategy"}],
+    ADVANCED_STRATEGY_INPUT_GRID = [
         [
             {"label": "Target Fuel/Lap (l)", "tag": "target_fuel", "default": 0.00},
-            {"label": "Lap Length (km)", "tag": "lap_length2", "default": 5.807},
-            {"label": "Total Laps", "tag": "total_laps2", "default": 0, "readonly": True},
+            {"label": "Target Pace (s)", "tag": "target_pace", "default": 0.00},
+            {"label": "Include Lap Margin", "tag": "include_lap_margin", "default": True},
+        ],
+        [
+            {"label": "Leader Avg Lap (s)", "tag": "leader_pace", "default": 119.00},
+            {"label": "Adjusted Laps", "tag": "adjusted_total_laps", "default": 0, "readonly": False},
+            {"label": "Use Adjusted Laps", "tag": "use_adjusted_laps", "default": False},
         ]
     ]
 
@@ -117,7 +121,7 @@ class CrewChiefPanel(BasePanel):
                 # RIGHT COLUMN — empty for now
                 # ----------------------------------
                 with dpg.group(tag="strategy_column"):
-                    self.build_input_grid(self.BASIC_EQUAL_STRATEGY_RESULT_GRID, columns=3)
+                    self.build_input_grid(self.ADVANCED_STRATEGY_INPUT_GRID, columns=3)
                     # Placeholder container for any dynamic content added at runtime
                     dpg.add_group(tag="full_race_distance_equal_stint_strategy")
                     self.build_extra_right()
@@ -130,7 +134,7 @@ class CrewChiefPanel(BasePanel):
         """Add custom UI below the grid."""
         dpg.add_button(label="Recalculate", callback=self.calculate_full_distance_strategies)
 
-    def build_stint_plan_grid(self, plan: dict):
+    def build_stint_plan_grid(self, name: str, prefix: str, plan: dict):
         """
         Given a stint plan dict such as:
         {
@@ -146,12 +150,15 @@ class CrewChiefPanel(BasePanel):
         grid = []
 
         # --- Section: Summary ---
-        grid.append([{"section": "Stint Plan Summary"}])
+        grid.append([
+            {"section": f"{name}"},
+            {f"section": f"{sum(plan["stint_laps"])} Total Laps"}
+        ])
 
         grid.append([
-            {"label": "Total Stints", "tag": "res_total_stints", "default": str(plan['stints']), "readonly": True},
-            {"label": "Total Stops", "tag": "res_total_stops", "default": str(plan['stops']), "readonly": True},
-            {"label": "Free Tyre Laps", "tag": "res_free_tyre_laps", "default": str(plan['laps_for_free_tyres']), "readonly": True},
+            {"label": "Total Stints", "tag": f"{prefix}_total_stints", "default": str(plan['stints']), "readonly": True},
+            {"label": "Total Stops", "tag": f"{prefix}_total_stops", "default": str(plan['stops']), "readonly": True},
+            {"label": "Free Tyre Laps", "tag": f"{prefix}_free_tyre_laps", "default": str(plan['laps_for_free_tyres']), "readonly": True},
         ])
 
         # --- Section: Per-Stint Breakdown ---
@@ -165,8 +172,8 @@ class CrewChiefPanel(BasePanel):
 
             grid.append([
                 {"section": f"Stint {i + 1}"},
-                {"tag": f"res_stint_{i + 1}_laps", "default": lap_val, "readonly": True},
-                {"tag": f"res_stint_{i + 1}_fuel", "default": fuel_val, "readonly": True},
+                {"tag": f"{prefix}_stint_{i + 1}_laps", "default": lap_val, "readonly": True},
+                {"tag": f"{prefix}_stint_{i + 1}_fuel", "default": fuel_val, "readonly": True},
             ])
 
         return grid
@@ -237,6 +244,90 @@ class CrewChiefPanel(BasePanel):
             dpg.add_text(suggestion, parent=parent, wrap=600, color=style.SECTION_LABEL)
             dpg.add_spacer(height=4, parent=parent)
 
+    def render_tyre_limited(self, data: dict, parent: str):
+        """
+        Renders the tyre-limited warning UI (hybrid layout):
+        - Simple labels for general info
+        - No table is required for this result type
+        """
+        style = self.ctx.ui  # convenience alias
+
+        # -----------------------------------------
+        # Section Header
+        # -----------------------------------------
+        dpg.add_text("Tyre-Limited Stint Plan", parent=parent, color=style.WARNING_LABEL)
+        dpg.add_separator(parent=parent)
+
+        # -----------------------------------------
+        # Message
+        # -----------------------------------------
+        if msg := data.get("message"):
+            dpg.add_text(f"Message: {msg}", parent=parent, wrap=600)
+            dpg.add_spacer(height=4, parent=parent)
+
+        # -----------------------------------------
+        # Max legal laps (max allowed tyre stint length)
+        # -----------------------------------------
+        if "max_stint_laps" in data:
+            dpg.add_text(
+                f"Maximum Stint Length on Tyres: {data['max_stint_laps']} laps",
+                parent=parent
+            )
+            dpg.add_spacer(height=4, parent=parent)
+
+        # -----------------------------------------
+        # Required laps
+        # -----------------------------------------
+        if "laps_required" in data:
+            dpg.add_text(
+                f"Laps Required for Free Stop Window: {data['laps_required']} laps",
+                parent=parent
+            )
+            dpg.add_spacer(height=4, parent=parent)
+
+        # -----------------------------------------
+        # Penultimate + Final Stint Lengths
+        # -----------------------------------------
+        if "penultimate" in data or "final" in data:
+            dpg.add_text("Critical Stint Lengths:", parent=parent)
+            with dpg.group(parent=parent, indent=8):
+                if "penultimate" in data:
+                    dpg.add_text(f"Penultimate Stint: {data['penultimate']} laps")
+                if "final" in data:
+                    dpg.add_text(f"Final Stint: {data['final']} laps")
+            dpg.add_spacer(height=4, parent=parent)
+
+        # -----------------------------------------
+        # Total laps + remainder
+        # -----------------------------------------
+        if "total_laps" in data:
+            dpg.add_text(f"Total Laps: {data['total_laps']}", parent=parent)
+        if "remainder" in data:
+            dpg.add_text(f"Remainder After Splitting: {data['remainder']}", parent=parent)
+            dpg.add_spacer(height=4, parent=parent)
+
+        # -----------------------------------------
+        # Suggestion
+        # -----------------------------------------
+        if suggestion := data.get("suggestion"):
+            dpg.add_text(
+                f"Suggestion: {suggestion}",
+                parent=parent,
+                wrap=600,
+                color=style.SECTION_LABEL
+            )
+            dpg.add_spacer(height=4, parent=parent)
+
+    @staticmethod
+    def get_total_laps():
+        if dpg.get_value("use_adjusted_laps"):
+            total_laps = dpg.get_value("adjusted_total_laps")
+        else:
+            total_laps = dpg.get_value("total_laps")
+        if dpg.get_value("include_lap_margin"):
+            total_laps += dpg.get_value("lap_margin")
+        return total_laps
+
     # --------------------------------------------
     # TAB ACTIONS
     # --------------------------------------------
@@ -258,6 +349,7 @@ class CrewChiefPanel(BasePanel):
 
         # Set our target_fuel to match fuel_avg
         dpg.set_value("target_fuel", dpg.get_value("fuel_avg"))
+        dpg.set_value("target_pace", dpg.get_value("target_lap"))
 
     def get_race_distance_action(self):
         # Set the no of laps we expect to complete based on race distance
@@ -294,6 +386,17 @@ class CrewChiefPanel(BasePanel):
             dpg.set_value(stila_tag, laps)
 
     def calculate_full_distance_strategies(self):
+        # Calculate the adjusted total laps based on leaders pace
+        total_laps = dpg.get_value("total_laps")
+        leader_pace = dpg.get_value("leader_pace")
+        target_pace = dpg.get_value("target_pace")
+        self.ctx.logger.info(f"Total laps: {total_laps}; leader_pace: {leader_pace}; target_pace: {target_pace}")
+        adj_total_laps = self.ps.calculate_adjusted_total_laps(total_laps, target_pace, leader_pace)
+        dpg.set_value("adjusted_total_laps", adj_total_laps)
+
+        # Clear existing dynamic content from the group.
+        dpg.delete_item("full_race_distance_equal_stint_strategy", children_only=True)
+
         self.calculate_full_race_distance_equal_stint_strategy()
         self.calculate_full_race_distance_final_stint_strategy()
 
@@ -333,7 +436,8 @@ class CrewChiefPanel(BasePanel):
             This strategy equalises the stints to avoid any 'splash and dash' at the end.
         :return:
         """
-        total_laps = dpg.get_value("total_laps")
+
+        total_laps = self.get_total_laps()
         tank_capacity = dpg.get_value("tank_capacity")
         tyre_change_litres = dpg.get_value("tyre_change_litres")
         target_fuel = dpg.get_value("target_fuel")
@@ -345,19 +449,15 @@ class CrewChiefPanel(BasePanel):
             tyre_change_litres=tyre_change_litres
         )
 
-        # Clear existing dynamic content from the group.
-        dpg.delete_item("full_race_distance_equal_stint_strategy", children_only=True)
-
         if stint_array.get("status") == "passed":
             # Build the stint grid plan and then build into the group.
-            stint_grid_plan = self.build_stint_plan_grid(stint_array)
+            stint_grid_plan = self.build_stint_plan_grid("Uniform Stint Plan", "frdess", stint_array)
             with dpg.group(parent="full_race_distance_equal_stint_strategy"):
                 self.build_input_grid(stint_grid_plan, columns=3)
 
         elif stint_array.get("status") == "fuel_limited":
             with dpg.group(parent="full_race_distance_equal_stint_strategy"):
                 self.render_fuel_limited(stint_array, parent=dpg.last_item())
-
         else:
             self.ctx.logger.warning(f"Unknown stint calculation error: {stint_array.get('status')}")
 
@@ -366,7 +466,7 @@ class CrewChiefPanel(BasePanel):
             But equalises the final two stints to reduce the risk of a 'splash and dash' at the end.
             However, it maximises stint lengths during the bulk of the race."""
 
-        total_laps = dpg.get_value("total_laps")
+        total_laps = self.get_total_laps()
         tank_capacity = dpg.get_value("tank_capacity")
         tyre_change_litres = dpg.get_value("tyre_change_litres")
         target_fuel = dpg.get_value("target_fuel")
@@ -378,7 +478,22 @@ class CrewChiefPanel(BasePanel):
             fuel_per_lap=target_fuel,
             tyre_change_litres=tyre_change_litres
         )
-
         print(stint_array)
+
+        if stint_array.get("status") == "passed":
+            # Build the stint grid plan and then build into the group.
+            stint_grid_plan = self.build_stint_plan_grid("Equal Final Plan", "frdfss", stint_array)
+            with dpg.group(parent="full_race_distance_equal_stint_strategy"):
+                self.build_input_grid(stint_grid_plan, columns=3)
+
+        elif stint_array.get("status") == "fuel_limited":
+            with dpg.group(parent="full_race_distance_equal_stint_strategy"):
+                self.render_fuel_limited(stint_array, parent=dpg.last_item())
+
+        elif stint_array.get("status") == "tyre_limited":
+            with dpg.group(parent="full_race_distance_equal_stint_strategy"):
+                self.render_tyre_limited(stint_array, parent=dpg.last_item())
+        else:
+            self.ctx.logger.warning(f"Unknown stint calculation error: {stint_array.get('status')}")
 
 

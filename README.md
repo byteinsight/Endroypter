@@ -1,8 +1,14 @@
-# Enduro Strat
+# iRaceInsight
 
-Enduro Strat is a lightweight toolkit for analysing endurance-race strategy. It provides helper functions, fuel and stint calculators
+## Crew Chief 
+
+Crew Chief is a simple stint planner for distance and time based races.
 
 ## Distance Based Races
+
+Distance based races are events such as the Suzuka 1000km.  Teams race to complete 1000km (or 173 laps).   
+
+The Race ends when the first team completed the required number of laps. 
 
 ### Full Race Lap Strategies
 

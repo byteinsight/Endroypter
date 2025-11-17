@@ -1,6 +1,7 @@
 # main_ui.py
 import dearpygui.dearpygui as dpg
 
+from ui.help_panel import HelpPanel
 from ui.settings import SettingsPanel
 from ui.timing_panel import TimingPanel
 from ui.crewchief_panel import CrewChiefPanel
@@ -12,6 +13,7 @@ class UIMain:
             CrewChiefPanel(),
             TimingPanel(),
             SettingsPanel(),
+            HelpPanel(),
         ]
 
     def build(self):
