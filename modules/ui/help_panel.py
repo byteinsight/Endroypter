@@ -1,5 +1,5 @@
 import dearpygui.dearpygui as dpg
-from ui.base_panel import BasePanel
+from modules.ui.base_panel import BasePanel
 
 
 # -------------------------------------------------------------
@@ -88,9 +88,13 @@ def render_markdown(path, parent):
 # HELP PANEL
 # -------------------------------------------------------------
 class HelpPanel(BasePanel):
-    label = "Help"
+    LABEL = "Help"
 
     HELP_FILE = "README.md"   # <- Change this as needed
+
+    def __init__(self, ctx):
+        super().__init__(ctx)
+        self.ctx = ctx
 
     def build(self):
         """Loads and displays the help markdown file."""

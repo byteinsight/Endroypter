@@ -1,6 +1,6 @@
 from math import ceil, floor
 
-from helpers.app_context import AppContext
+from modules.core.app_context import AppContext
 
 
 class PitStrategist:
@@ -9,8 +9,13 @@ class PitStrategist:
         self.ctx = ctx
 
     @staticmethod
-    def calculate_total_laps(dist, lap_len):
+    def calculate_total_laps_on_distance(dist, lap_len):
         total = ceil(dist / lap_len) if lap_len > 0 else 0
+        return total
+
+    @staticmethod
+    def calculate_total_laps_on_time(total_time, lap_time):
+        total = ceil((total_time*60) / lap_time) if lap_time > 0 else 0
         return total
 
     @staticmethod

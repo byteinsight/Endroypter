@@ -1,83 +1,78 @@
 # ui/pit_panel.py
+import json
 
 import dearpygui.dearpygui as dpg
 
-from helpers.pit_strategist import PitStrategist
-from ui.base_panel import BasePanel
+from modules.helpers.pit_strategist import PitStrategist
+from modules.ui.base_panel import BasePanel
 
 # --------------------------------------------
 # THE PIT CALC PANEL CLASS
 # --------------------------------------------
 class CrewChiefPanel(BasePanel):
-    label = "Crew Chief"
+    LABEL = "Crew Chief"
 
-    INPUT_GRID = [
-        [{"section": "RACE INFO (Distance Based)"}],
+    RACE_SETUP_GRID = [
         [
+            {"label": "Race Type", "tag": "race_mode", "type": "combo", "width": 200, "items": ["Time", "Laps", "Distance"]},
+            {"label": "Race Length (mins)", "tag": "race_length_mins", "default": 45, "style": "user_input"},
+            {"label": "Race Length (laps)", "tag": "race_length_laps", "default": 20},
             {"label": "Race Dist (km)", "tag": "race_distance", "default": 1000},
             {"label": "Lap Length (km)", "tag": "lap_length", "default": 5.807},
             {"label": "Total Laps", "tag": "total_laps", "default": 0, "readonly": True},
-        ],
+        ]
+    ]
 
-        [{"section": "PIT DELTAS"}],
+    RACE_DELTAS_GRID = [
         [
+            {"section": "PIT DELTAS"}, {}, {},
+            {"section": "LAP TIMES & FUEL USAGE"}, {}, {}
+        ],
+        [
+            # Pit Inputs - Left Top
+            {"label": "Tank Capacity (l)", "tag": "tank_capacity", "default": 103.00},
             {"label": "Service Time (s)", "tag": "service_time", "default": 42.00},
-            {"label": "Tyre Change (s)", "tag": "tyre_change_time", "default": 21.00},
-            {"label": "Delta Time (s)", "tag": "total_pit_time", "default": 62.00},
-        ],
-        [
-            {"label": "PL Loss (s)", "tag": "pit_lane_loss", "default": 0.00},
-            {"label": "Fuel Rate (l/s)", "tag": "refuelling_rate", "default": 0.00},
-            {"label": "Free Tyres  (~laps)", "tag": "tyre_change_laps", "default": 0.00},
-        ],
+            {"label": "Fuel Rate (l/s)", "tag": "refuelling_rate", "readonly": True},
 
-        [{"section": "FUEL INFO"}],
-        [
-            {"label": "Tank (L)", "tag": "tank_capacity", "default": 103.9},
-            {"label": "Lap Margin", "tag": "lap_margin", "default": 1.00},
-            {"label": "Free Tyres (litres)", "tag": "tyre_change_litres", "default": 0.00},
+            # Lap Time Inputs - Right Top
+            {"label": "Fast Lap (s)", "tag": "target_fast_lap", "default": 119.5},
+            {"label": "Target Lap (s)", "tag": "target_lap", "default": 121.5},
+            {"label": "Fuel Saving Lap (s)", "tag": "target_fuel_lap", "default": 123.0},
         ],
         [
+            # Pit Deltas - Left Middle
+            {"label": "Delta Time (s)", "tag": "total_pit_time", "default": 62.00},
+            {"label": "Tyre Change (s)", "tag": "tyre_change_time", "default": 21.00},
+            {"label": "PL Loss (s)", "tag": "pit_lane_loss", "readonly": True},
+
+            # Fuel Usage - Right Middle
             {"label": "Fuel Min", "tag": "fuel_min", "default": 3.46},
             {"label": "Fuel Avg", "tag": "fuel_avg", "default": 3.57},
             {"label": "Fuel Max", "tag": "fuel_max", "default": 3.67},
         ],
         [
-            {"label": "StiLa Min", "tag": "stint_laps_min", "default": 0.00},
-            {"label": "StiLa Avg", "tag": "stint_laps_avg", "default": 0.00},
-            {"label": "StiLa Max", "tag": "stint_laps_max", "default": 0.00},
-        ],
+            # Free Stop - Left Bottom
+            {"label": "Free Tyres (~litres)", "tag": "tyre_change_litres", "readonly": True},
+            {"label": "Free Tyres (~laps)", "tag": "tyre_change_laps", "readonly": True},
+            {"label": "Lap Margin", "tag": "lap_margin", "default": 1.00},
+            # Lap/Stint - Right Bottom
+            {"label": "Laps per Stint (Min)", "tag": "basic_lps_min", "readonly": True},
+            {"label": "Laps per Stint (Avg)", "tag": "basic_lps_avg", "readonly": True},
+            {"label": "Laps per Stint (Max)", "tag": "basic_lps_max", "readonly": True},
 
-        [{"section": "LAP RANGE"}],
-        [
-            {"label": "Fast Lap (s)", "tag": "target_fast_lap", "default": 119.5},
-            {"label": "Target Lap (s)", "tag": "target_lap", "default": 121.5},
-            {"label": "Fuel Saving Lap (s)", "tag": "target_fuel_lap", "default": 123.0},
-        ],
+        ]
     ]
 
     BASIC_STRATEGY_RESULT_GRID = [
-        [{"section": "Basic Strategy"}],
         [
-            {"label": "Fuel/Lap (Min)", "tag": "res_fpl_min", "readonly": True},
-            {"label": "Fuel/Lap (Avg)", "tag": "res_fpl_avg", "readonly": True},
-            {"label": "Fuel/Lap (Max)", "tag": "res_fpl_max", "readonly": True},
-        ],
-        [
-            {"label": "Laps per Stint (Min)", "tag": "res_lps_min", "readonly": True},
-            {"label": "Laps per Stint (Avg)", "tag": "res_lps_avg", "readonly": True},
-            {"label": "Laps per Stint (Max)", "tag": "res_lps_max", "readonly": True},
-
-        ],
-        [
-            {"label": "Stops (Min)", "tag": "res_stops_min", "readonly": True},
-            {"label": "Stops (Avg)", "tag": "res_stops_avg", "readonly": True},
-            {"label": "Stops (Max)", "tag": "res_stops_max", "readonly": True},
-        ],
-        [
-            {"label": "Last Stint (Min)", "tag": "last_stint_min", "readonly": True},
-            {"label": "Last Stint  (Avg)", "tag": "last_stint_avg", "readonly": True},
-            {"label": "Last Stint  (Max)", "tag": "last_stint_max", "readonly": True},
+            # Stops - Right Top
+            {"label": "Stops (Min)", "tag": "basic_stops_min", "readonly": True},
+            {"label": "Stops (Avg)", "tag": "basic_stops_avg", "readonly": True},
+            {"label": "Stops (Max)", "tag": "basic_stops_max", "readonly": True},
+            # Last Stint - Right Bottom
+            {"label": "Last Stint (Min)", "tag": "basic_last_stint_min", "readonly": True},
+            {"label": "Last Stint  (Avg)", "tag": "basic_last_stint_avg", "readonly": True},
+            {"label": "Last Stint  (Max)", "tag": "basic_last_stint_max", "readonly": True},
         ],
     ]
 
@@ -86,53 +81,74 @@ class CrewChiefPanel(BasePanel):
             {"label": "Target Fuel/Lap (l)", "tag": "target_fuel", "default": 0.00},
             {"label": "Target Pace (s)", "tag": "target_pace", "default": 0.00},
             {"label": "Include Lap Margin", "tag": "include_lap_margin", "default": True},
-        ],
-        [
             {"label": "Leader Avg Lap (s)", "tag": "leader_pace", "default": 119.00},
             {"label": "Adjusted Laps", "tag": "adjusted_total_laps", "default": 0, "readonly": False},
             {"label": "Use Adjusted Laps", "tag": "use_adjusted_laps", "default": False},
         ]
     ]
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, ctx):
+        super().__init__(ctx)
+        self.ctx = ctx
         self.ps = PitStrategist(self.ctx)
 
     def build(self):
         """Main entry point for building this panel."""
+        column_width = (dpg.get_viewport_client_width()+100) // 2
 
-        # Create the two-column main layout
-        with dpg.table(header_row=False, resizable=True):
-            dpg.add_table_column(init_width_or_weight=600, width_fixed=True)  # LEFT COLUMN (inputs)
-            dpg.add_table_column()  # RIGHT COLUMN (strategies)
+        # Race Config as full width top col.
+        with dpg.collapsing_header(label="RACE CONFIGURATION", tag="race_configuration_header", default_open=True):
+            self.build_input_grid(self.RACE_SETUP_GRID, columns=6)
+            self.build_input_grid(self.RACE_DELTAS_GRID, columns=6)
+            with dpg.collapsing_header(label="BASIC STRATEGY", tag="basic_strategy_header", default_open=True):
+                self.build_input_grid(self.BASIC_STRATEGY_RESULT_GRID, columns=6)
 
-            with dpg.table_row():
-                # ----------------------------------
-                # LEFT COLUMN — your existing grid
-                # ----------------------------------
-                with dpg.group():
-                    self.build_input_grid(self.INPUT_GRID, columns=3)
-                    self.build_input_grid(self.BASIC_STRATEGY_RESULT_GRID, columns=3)
+        with dpg.group(horizontal=True):
+            dpg.add_button(label="Load Config", width=150, callback=self.on_load_config_action)
+            dpg.add_button(label="Initialise", callback=self.initialise_action)
+            dpg.add_button(label="Recalculate", callback=self.calculate_strategies_action)
+            dpg.add_button(label="Save Config", width=150, callback=self.on_save_config_action)
 
-                    # Allow subclasses to continue
-                    self.build_extra()
+        with dpg.collapsing_header(label="ADVANCED STRATEGY", tag="advanced_strategy_header", default_open=True):
+            self.build_input_grid(self.ADVANCED_STRATEGY_INPUT_GRID, columns=6)
 
-                # ----------------------------------
-                # RIGHT COLUMN — empty for now
-                # ----------------------------------
-                with dpg.group(tag="strategy_column"):
-                    self.build_input_grid(self.ADVANCED_STRATEGY_INPUT_GRID, columns=3)
-                    # Placeholder container for any dynamic content added at runtime
-                    dpg.add_group(tag="full_race_distance_equal_stint_strategy")
-                    self.build_extra_right()
+            with dpg.group(horizontal=True):
+                # LEFT COLUMN
+                with dpg.child_window(
+                        tag="full_race_distance_equal_stint_strategy",
+                        width=600,  # <<< set your width
+                        autosize_y=True
+                ):
+                    pass  # initially empty
 
-    def build_extra(self):
-        """Add custom UI below the grid."""
-        dpg.add_button(label="Initialise", callback=self.initialise_action)
+                # RIGHT COLUMN
+                with dpg.child_window(
+                        tag="full_race_distance_final_stint_strategy",
+                        width=600,  # <<< set your width
+                        autosize_y=True
+                ):
+                    pass  # initially empty
 
-    def build_extra_right(self):
-        """Add custom UI below the grid."""
-        dpg.add_button(label="Recalculate", callback=self.calculate_full_distance_strategies)
+        dpg.bind_item_theme("race_configuration_header", "race_header_theme")
+        dpg.bind_item_theme("basic_strategy_header", "basic_header_theme")
+        dpg.bind_item_theme("advanced_strategy_header", "advanced_header_theme")
+
+        # Create hidden popups once during UI build
+        with dpg.window(label="Saved", modal=True, show=False, tag="save_success_popup"):
+            dpg.add_text("Configuration saved successfully.")
+            dpg.add_button(label="OK", callback=lambda: dpg.hide_item("save_success_popup"))
+
+        with dpg.window(label="Error", modal=True, show=False, tag="save_error_popup"):
+            dpg.add_text("Failed to save configuration.")
+            dpg.add_button(label="OK", callback=lambda: dpg.hide_item("save_error_popup"))
+
+        with dpg.window(label="Loaded", modal=True, show=False, tag="load_success_popup"):
+            dpg.add_text("Configuration loaded successfully.")
+            dpg.add_button(label="OK", callback=lambda: dpg.hide_item("load_success_popup"))
+
+        with dpg.window(label="Error", modal=True, show=False, tag="load_error_popup"):
+            dpg.add_text("Failed to load configuration.")
+            dpg.add_button(label="OK", callback=lambda: dpg.hide_item("load_error_popup"))
 
     def build_stint_plan_grid(self, name: str, prefix: str, plan: dict):
         """
@@ -152,7 +168,7 @@ class CrewChiefPanel(BasePanel):
         # --- Section: Summary ---
         grid.append([
             {"section": f"{name}"},
-            {f"section": f"{sum(plan["stint_laps"])} Total Laps"}
+            {f"section": f"{sum(plan['stint_laps'])} Total Laps"}
         ])
 
         grid.append([
@@ -318,16 +334,6 @@ class CrewChiefPanel(BasePanel):
             )
             dpg.add_spacer(height=4, parent=parent)
 
-    @staticmethod
-    def get_total_laps():
-        if dpg.get_value("use_adjusted_laps"):
-            total_laps = dpg.get_value("adjusted_total_laps")
-        else:
-            total_laps = dpg.get_value("total_laps")
-        if dpg.get_value("include_lap_margin"):
-            total_laps += dpg.get_value("lap_margin")
-        return total_laps
-
     # --------------------------------------------
     # TAB ACTIONS
     # --------------------------------------------
@@ -339,53 +345,18 @@ class CrewChiefPanel(BasePanel):
 
         self.ctx.logger.info(f"Crew Chief Reporting for Duty!")
 
-        self.get_race_distance_action()
+        self.get_race_distance_in_laps()
 
-        self.calculate_stila_action()
+        self.do_pit_stop_analysis()
 
-        self.get_pit_stop_report_action()
+        self.calculate_basic_stint_lengths()
 
         self.calculate_full_race_distance_basic_strategy()
 
-        # Set our target_fuel to match fuel_avg
         dpg.set_value("target_fuel", dpg.get_value("fuel_avg"))
         dpg.set_value("target_pace", dpg.get_value("target_lap"))
 
-    def get_race_distance_action(self):
-        # Set the no of laps we expect to complete based on race distance
-        race_distance = dpg.get_value("race_distance")
-        lap_length = dpg.get_value("lap_length")
-        no_of_laps = self.ps.calculate_total_laps(race_distance, lap_length)
-        dpg.set_value("total_laps", no_of_laps)
-
-    def get_pit_stop_report_action(self):
-        # Get the Pit Lane report based on manual observations
-        tpt = dpg.get_value("total_pit_time")
-        st = dpg.get_value("service_time")
-        tc = dpg.get_value("tank_capacity")
-        tct = dpg.get_value("tyre_change_time")
-        af = dpg.get_value("fuel_avg")
-        pll, rr, tcli, tcla = self.ps.get_pit_stop_report(tpt, st, tc, tct, af)
-        dpg.set_value("pit_lane_loss", pll)
-        dpg.set_value("refuelling_rate", rr)
-        dpg.set_value("tyre_change_litres", tcli)
-        dpg.set_value("tyre_change_laps", tcla)
-
-    def calculate_stila_action(self):
-        # Calculate the no of laps per stint based on expected fuel usage
-        total_fuel = dpg.get_value("tank_capacity")
-        fuel_to_stila = {
-            "fuel_min": "stint_laps_min",
-            "fuel_avg": "stint_laps_avg",
-            "fuel_max": "stint_laps_max",
-        }
-
-        for fuel_tag, stila_tag in fuel_to_stila.items():
-            fuel_lap = dpg.get_value(fuel_tag)
-            laps = self.ps.calculate_laps_in_tank(total_fuel, fuel_lap)
-            dpg.set_value(stila_tag, laps)
-
-    def calculate_full_distance_strategies(self):
+    def calculate_strategies_action(self):
         # Calculate the adjusted total laps based on leaders pace
         total_laps = dpg.get_value("total_laps")
         leader_pace = dpg.get_value("leader_pace")
@@ -396,9 +367,102 @@ class CrewChiefPanel(BasePanel):
 
         # Clear existing dynamic content from the group.
         dpg.delete_item("full_race_distance_equal_stint_strategy", children_only=True)
+        dpg.delete_item("full_race_distance_final_stint_strategy", children_only=True)
 
         self.calculate_full_race_distance_equal_stint_strategy()
         self.calculate_full_race_distance_final_stint_strategy()
+
+    def on_save_config_action(self):
+        """
+        Opens the save dialog.
+        When user chooses a file, on_save_config_selected is triggered.
+        """
+        with dpg.file_dialog(
+                directory_selector=False,
+                show=True,
+                callback=self.on_save_config_selected,
+                modal=True,
+                height=400,
+                width=600,
+                default_path=self.ctx.replay_folder,
+                default_filename="race_config.json"
+        ):
+            dpg.add_file_extension(".json", color=(255, 0, 255, 255), custom_text="[json]")
+
+    def on_load_config_action(self):
+        """
+        Opens a file dialog to select a config file.
+        """
+        with dpg.file_dialog(
+                directory_selector=False,
+                show=True,
+                callback=self.on_load_config_selected,
+                modal=True,
+                height=400,
+                width=600,
+                default_path=self.ctx.replay_folder,
+        ):
+            dpg.add_file_extension(".json", color=(255, 0, 255, 255), custom_text="[json]")
+
+    # --------------------------------------------
+    # STRATEGY CALLS
+    # --------------------------------------------
+    @staticmethod
+    def get_total_laps():
+        if dpg.get_value("use_adjusted_laps"):
+            total_laps = dpg.get_value("adjusted_total_laps")
+        else:
+            total_laps = dpg.get_value("total_laps")
+        if dpg.get_value("include_lap_margin"):
+            total_laps += dpg.get_value("lap_margin")
+        return total_laps
+
+    def get_race_distance_in_laps(self):
+        race_mode = dpg.get_value("race_mode").lower()
+
+        if race_mode == "time":
+            race_length_mins = dpg.get_value("race_length_mins")
+            target_lap = dpg.get_value("target_lap")
+            no_of_laps = self.ps.calculate_total_laps_on_time(race_length_mins, target_lap)
+
+        # Set the no of laps we expect to complete based on race distance
+        elif race_mode == "distance":
+            race_distance = dpg.get_value("race_distance")
+            lap_length = dpg.get_value("lap_length")
+            no_of_laps = self.ps.calculate_total_laps_on_distance(race_distance, lap_length)
+
+        else:
+            no_of_laps = dpg.get_value("race_length_laps")
+
+        dpg.set_value("total_laps", no_of_laps)
+        self.ctx.logger.info(f"Total Race Laps = {no_of_laps} based on Race Mode = {race_mode}")
+
+    def do_pit_stop_analysis(self):
+        # Get the Pit Lane report based on manual observations
+        tpt = dpg.get_value("total_pit_time")
+        st = dpg.get_value("service_time")
+        tc = dpg.get_value("tank_capacity")
+        tct = dpg.get_value("tyre_change_time")
+        af = dpg.get_value("fuel_avg")
+        pll, rr, tcli, tcla = self.ps.get_pit_stop_report(tpt, st, tc, tct, af)
+        dpg.set_value("pit_lane_loss", pll)
+        dpg.set_value("refuelling_rate", f"{rr:.3f}")
+        dpg.set_value("tyre_change_litres", f"{tcli:.3f}")
+        dpg.set_value("tyre_change_laps", f"{tcla:.3f}")
+
+    def calculate_basic_stint_lengths(self):
+        # Calculate the no of laps per stint based on expected fuel usage
+        total_fuel = dpg.get_value("tank_capacity")
+        fuel_to_stila = {
+            "fuel_min": "basic_lps_min",
+            "fuel_avg": "basic_lps_avg",
+            "fuel_max": "basic_lps_max",
+        }
+
+        for fuel_tag, stila_tag in fuel_to_stila.items():
+            fuel_lap = dpg.get_value(fuel_tag)
+            laps = self.ps.calculate_laps_in_tank(total_fuel, fuel_lap)
+            dpg.set_value(stila_tag, f"{laps:.3f}")
 
     def calculate_full_race_distance_basic_strategy(self):
         """ Basic Strategy assumes that the team completes all 173 laps regardless of their finishing position.
@@ -426,10 +490,8 @@ class CrewChiefPanel(BasePanel):
             self.ctx.logger.info(f"Stint Plan: {stint_plan}")
 
             # Populate UI fields
-            dpg.set_value(f"res_fpl_{label}", f"{fuel_lap:.3f}")
-            dpg.set_value(f"res_lps_{label}", stint_plan["laps_per_stint"])
-            dpg.set_value(f"res_stops_{label}", stint_plan["stops"])
-            dpg.set_value(f"last_stint_{label}", stint_plan["last_stint_laps"])
+            dpg.set_value(f"basic_stops_{label}", stint_plan["stops"])
+            dpg.set_value(f"basic_last_stint_{label}", stint_plan["last_stint_laps"])
 
     def calculate_full_race_distance_equal_stint_strategy(self):
         """ Basic Equal Stint Strategy assumes that the team completes all 173 laps regardless of their finishing position.
@@ -443,10 +505,10 @@ class CrewChiefPanel(BasePanel):
         target_fuel = dpg.get_value("target_fuel")
 
         stint_array = self.ps.calculate_equal_stint_plan(
-            total_laps=total_laps,
-            tank_capacity=tank_capacity,
-            fuel_per_lap=target_fuel,
-            tyre_change_litres=tyre_change_litres
+            total_laps=int(total_laps),
+            tank_capacity=float(tank_capacity),
+            fuel_per_lap=float(target_fuel),
+            tyre_change_litres=float(tyre_change_litres)
         )
 
         if stint_array.get("status") == "passed":
@@ -473,27 +535,129 @@ class CrewChiefPanel(BasePanel):
 
         # Build a stint array based on maximum stints except last two which are equalised
         stint_array = self.ps.calculate_final_stint_plan(
-            total_laps=total_laps,
-            tank_capacity=tank_capacity,
-            fuel_per_lap=target_fuel,
-            tyre_change_litres=tyre_change_litres
+            total_laps=int(total_laps),
+            tank_capacity=float(tank_capacity),
+            fuel_per_lap=float(target_fuel),
+            tyre_change_litres=float(tyre_change_litres)
         )
-        print(stint_array)
 
         if stint_array.get("status") == "passed":
             # Build the stint grid plan and then build into the group.
             stint_grid_plan = self.build_stint_plan_grid("Equal Final Plan", "frdfss", stint_array)
-            with dpg.group(parent="full_race_distance_equal_stint_strategy"):
+            with dpg.group(parent="full_race_distance_final_stint_strategy"):
                 self.build_input_grid(stint_grid_plan, columns=3)
 
         elif stint_array.get("status") == "fuel_limited":
-            with dpg.group(parent="full_race_distance_equal_stint_strategy"):
+            with dpg.group(parent="full_race_distance_final_stint_strategy"):
                 self.render_fuel_limited(stint_array, parent=dpg.last_item())
 
         elif stint_array.get("status") == "tyre_limited":
-            with dpg.group(parent="full_race_distance_equal_stint_strategy"):
+            with dpg.group(parent="full_race_distance_final_stint_strategy"):
                 self.render_tyre_limited(stint_array, parent=dpg.last_item())
         else:
             self.ctx.logger.warning(f"Unknown stint calculation error: {stint_array.get('status')}")
+
+    # --------------------------------------------
+    # SAVE/LOAD ACTIONS
+    # --------------------------------------------
+    @staticmethod
+    def extract_ui_values_from_grid(grid):
+        """
+        Given a grid definition (list of lists of cell dicts),
+        extract all UI values by reading dpg.get_value(cell['tag']).
+
+        Returns: dict { tag: value }
+        """
+        result = {}
+
+        for row in grid:
+            for cell in row:
+                # Ignore blanks
+                if not cell or not isinstance(cell, dict):
+                    continue
+
+                tag = cell.get("tag")
+                if not tag:
+                    continue
+
+                try:
+                    value = dpg.get_value(tag)
+                except Exception:
+                    # Widget might not exist or tag is not a value widget
+                    continue
+
+                result[tag] = value
+
+        return result
+
+    def extract_all_config(self, grids: dict):
+        full_config = {}
+
+        for section_name, grid in grids.items():
+            full_config[section_name] = self.extract_ui_values_from_grid(grid)
+
+        return full_config
+
+    @staticmethod
+    def apply_full_config(config: dict):
+        for section_name, section_values in config.items():
+            for tag, value in section_values.items():
+                if dpg.does_item_exist(tag):
+                    try:
+                        dpg.set_value(tag, value)
+                    except Exception:
+                        pass  # Silently ignore invalid loads
+
+    def on_save_config_selected(self, sender, app_data):
+        """
+        Called when user selects a save location.
+        app_data contains file_path_name, file_name, current_path, etc.
+        """
+        file_path = app_data.get('file_path_name')
+        if not file_path:
+            return
+
+        # Build your combined config
+        grids = {
+            "race_setup": self.RACE_SETUP_GRID,
+            "race_deltas": self.RACE_DELTAS_GRID,
+            "basic_strategy": self.BASIC_STRATEGY_RESULT_GRID,
+            "advanced_strategy": self.ADVANCED_STRATEGY_INPUT_GRID,
+        }
+
+        config = self.extract_all_config(grids)
+
+        # Write JSON
+        try:
+            with open(file_path, "w") as f:
+                json.dump(config, f, indent=4)
+            dpg.show_item("save_success_popup")
+        except Exception as e:
+            dpg.show_item("save_error_popup")
+
+    def on_load_config_selected(self, sender, app_data):
+        """
+        Called when the user selects a config file from the file dialog.
+        """
+        file_path = app_data.get("file_path_name")
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "r") as f:
+                loaded_cfg = json.load(f)
+
+            # Apply to UI
+            self.apply_full_config(loaded_cfg)
+
+            # Optionally remember the folder
+            self.ctx.replay_folder = app_data.get("current_path", self.ctx.replay_folder)
+
+            # Success popup
+            dpg.show_item("load_success_popup")
+
+        except Exception as e:
+            print("Load error:", e)
+            dpg.show_item("load_error_popup")
 
 

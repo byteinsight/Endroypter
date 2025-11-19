@@ -1,12 +1,12 @@
 import dearpygui.dearpygui as dpg
 from pathlib import Path
 
-from ui.base_panel import BasePanel
-from helpers.app_context import AppContext
+from modules.ui.base_panel import BasePanel
+
 
 
 class SettingsPanel(BasePanel):
-    label = "Settings"
+    LABEL = "Settings"
 
     INPUT_GRID = [
         [{"section": "Application Settings"}],
@@ -45,9 +45,9 @@ class SettingsPanel(BasePanel):
         ],
     ]
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.ctx = AppContext.instance()  # unified context (paths + settings + logging)
+    def __init__(self, ctx):
+        super().__init__(ctx)
+        self.ctx = ctx
 
     # -------------------------------------------------------
     # BUILD UI
