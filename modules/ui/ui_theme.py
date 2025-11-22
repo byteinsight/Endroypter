@@ -1,28 +1,28 @@
 # ui/ui_theme.py
 import dearpygui.dearpygui as dpg
+from modules.core.ui_style import UIStyle as STYLE
+
+def _rgb(color_rgba):
+    """Convert RGBA → RGB (DearPyGui ignores alpha)."""
+    return color_rgba[:3]
+
 
 def create_theme():
-    """Orange + Steel racing theme."""
+    """Create and bind the full application theme using the UIStyle palette."""
 
-    ORANGE = (255, 130, 30)
-    DARK_BG = (26, 26, 28)
-    MID_BG = (35, 35, 40)
-
-    with dpg.font_registry():
-        font_default = dpg.add_font("resources/fonts/segoeui.ttf", 16)
-
+    # ------------------------------------------------------------
+    # MAIN RACING THEME (GLOBAL)
+    # ------------------------------------------------------------
     with dpg.theme(tag="racing_theme"):
         with dpg.theme_component(dpg.mvAll):
-            # --- Fonts ---
-            dpg.bind_font(font_default)
 
-            # --- Backgrounds ---
-            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, DARK_BG)
-            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, MID_BG)
+            # --- Global Backgrounds ---
+            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, _rgb(STYLE.BACKGROUND))
+            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, _rgb(STYLE.CALC_BG_ALT))
 
             # --- Text ---
-            dpg.add_theme_color(dpg.mvThemeCol_Text, (235, 235, 235))
-            dpg.add_theme_color(dpg.mvThemeCol_TextDisabled, (120, 120, 120))
+            dpg.add_theme_color(dpg.mvThemeCol_Text, _rgb(STYLE.TEXT))
+            dpg.add_theme_color(dpg.mvThemeCol_TextDisabled, _rgb(STYLE.DISABLED_BG))
 
             # --- Inputs / Frames ---
             dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (45, 45, 50))
@@ -32,12 +32,18 @@ def create_theme():
             # --- Buttons ---
             dpg.add_theme_color(dpg.mvThemeCol_Button, (55, 55, 55))
             dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (85, 55, 25))
-            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, ORANGE)
+            dpg.add_theme_color(
+                dpg.mvThemeCol_ButtonActive,
+                _rgb(STYLE.PRIMARY_ORANGE_DEFAULT)
+            )
 
-            # --- Headers (table headers, tree headers) ---
+            # --- Headers ---
             dpg.add_theme_color(dpg.mvThemeCol_Header, (50, 50, 55))
             dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (90, 50, 20))
-            dpg.add_theme_color(dpg.mvThemeCol_HeaderActive, ORANGE)
+            dpg.add_theme_color(
+                dpg.mvThemeCol_HeaderActive,
+                _rgb(STYLE.PRIMARY_ORANGE_DEFAULT)
+            )
 
             # --- Tables ---
             dpg.add_theme_color(dpg.mvThemeCol_TableHeaderBg, (40, 40, 48))
@@ -45,19 +51,20 @@ def create_theme():
             dpg.add_theme_color(dpg.mvThemeCol_TableRowBgAlt, (33, 33, 36))
 
             # --- Borders ---
-            dpg.add_theme_color(dpg.mvThemeCol_Border, (70, 70, 75))
+            dpg.add_theme_color(dpg.mvThemeCol_Border, _rgb(STYLE.BORDER_COLOR))
 
-            # --- Rounding & Spacing ---
+            # --- Spacing & Rounding ---
             dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
             dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 5)
             dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 8, 4)
             dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 10, 8)
 
+    # Bind immediately
     dpg.bind_theme("racing_theme")
 
-    # ------------------------------------------------------------------
-    # HELPER: Create a header theme
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
+    # HELPER: HEADER THEME BUILDER
+    # ------------------------------------------------------------
     def make_header_theme(tag, bg, hover, active, text):
         with dpg.theme(tag=tag):
             with dpg.theme_component(dpg.mvCollapsingHeader):
@@ -66,60 +73,103 @@ def create_theme():
                 dpg.add_theme_color(dpg.mvThemeCol_HeaderActive, active)
                 dpg.add_theme_color(dpg.mvThemeCol_Text, text)
 
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
     # HEADER THEMES (Race / Basic / Advanced)
-    # ------------------------------------------------------------------
+    # ------------------------------------------------------------
 
-    # Race Strategy Header — blue tone
+    # Race Strategy Header (deep steel blue)
     make_header_theme(
         "race_header_theme",
-        bg=(40, 80, 160),
-        hover=(60, 110, 200),
-        active=(30, 60, 130),
-        text=(255, 255, 255),
+        bg=STYLE.SECONDARY_BLUE_DEFAULT,
+        hover=STYLE.SECONDARY_BLUE_LIGHT,
+        active=STYLE.SECONDARY_BLUE_DARK,
+        text=STYLE.TEXT_ON_SECONDARY_BLUE,
     )
 
-    # Basic Strategy Header — green tone
+    # Basic Strategy Header (racing green)
     make_header_theme(
         "basic_header_theme",
-        bg=(40, 140, 60),
-        hover=(65, 170, 85),
-        active=(35, 110, 45),
-        text=(255, 255, 255),
+        bg=STYLE.SECONDARY_GREEN_DEFAULT,
+        hover=STYLE.SECONDARY_GREEN_LIGHT,
+        active=STYLE.SECONDARY_GREEN_DARK,
+        text=STYLE.TEXT_ON_SECONDARY_GREEN,
     )
 
-    # Advanced Strategy Header — orange/red tone
+    # Advanced Strategy Header (brand orange)
     make_header_theme(
         "advanced_header_theme",
-        bg=(180, 90, 40),
-        hover=(210, 120, 55),
-        active=(160, 75, 30),
-        text=(255, 255, 255),
+        bg=STYLE.PRIMARY_ORANGE_DEFAULT,
+        hover=STYLE.PRIMARY_ORANGE_LIGHT,
+        active=STYLE.PRIMARY_ORANGE_DARK,
+        text=STYLE.TEXT_ON_PRIMARY_ORANGE,
     )
 
-    # USER INPUT: pale yellow background + stronger yellow border
+    # ------------------------------------------------------------
+    # SEMANTIC INPUT / OUTPUT THEMES (Excel-style UI mapping)
+    # ------------------------------------------------------------
+
+    # USER INPUT
     with dpg.theme(tag="theme_user_input"):
         with dpg.theme_component(dpg.mvInputText):
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (255, 250, 180))  # pale yellow
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, _rgb(STYLE.INPUT_BG))
             dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (255, 245, 150))
             dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (255, 240, 120))
-            dpg.add_theme_color(dpg.mvThemeCol_Border, (230, 200, 40))  # strong yellow
+            dpg.add_theme_color(dpg.mvThemeCol_Border, _rgb(STYLE.NOTE_TEXT))
+            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5)
+        with dpg.theme_component(dpg.mvInputInt):
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, _rgb(STYLE.INPUT_BG))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (255, 245, 150))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (255, 240, 120))
+            dpg.add_theme_color(dpg.mvThemeCol_Border, _rgb(STYLE.NOTE_TEXT))
+            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5)
+        with dpg.theme_component(dpg.mvInputFloat):
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, _rgb(STYLE.INPUT_BG))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (255, 245, 150))
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (255, 240, 120))
+            dpg.add_theme_color(dpg.mvThemeCol_Border, _rgb(STYLE.NOTE_TEXT))
             dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5)
 
-    # CALCULATED: light orange + stronger orange border
+    # CALCULATED
     with dpg.theme(tag="theme_calculated"):
         with dpg.theme_component(dpg.mvInputText):
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (255, 220, 170))  # light orange
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, _rgb(STYLE.CALC_BG_ALT))
             dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (255, 205, 140))
             dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (255, 190, 120))
-            dpg.add_theme_color(dpg.mvThemeCol_Border, (210, 120, 40))  # strong orange
+            dpg.add_theme_color(dpg.mvThemeCol_Border, _rgb(STYLE.BORDER_COLOR))
             dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5)
 
-    # OUTPUT: light grey + dark grey border
-    with dpg.theme(tag="theme_output"):
+    # OUTPUT
+    with dpg.theme(tag="output_cell_theme"):
         with dpg.theme_component(dpg.mvInputText):
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (210, 210, 210))  # light grey
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg, _rgb(STYLE.OUTPUT_BG))
             dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (200, 200, 200))
             dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (190, 190, 190))
-            dpg.add_theme_color(dpg.mvThemeCol_Border, (90, 90, 90))  # dark grey
+            dpg.add_theme_color(dpg.mvThemeCol_Border, (90, 90, 90))
             dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, 1.5)
+
+    # LABEL
+    with dpg.theme(tag="input_label_theme"):
+        with dpg.theme_component(dpg.mvText):
+            dpg.add_theme_color(dpg.mvThemeCol_Text, STYLE.TEXT_LIGHT)
+            dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, STYLE.SPACING_X, STYLE.SPACING_Y)
+
+    # SECTION THEME
+    with dpg.theme(tag="section_label_theme"):
+        with dpg.theme_component(dpg.mvText):
+            dpg.add_theme_color(dpg.mvThemeCol_Text, STYLE.PRIMARY_ORANGE_DEFAULT)
+            dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, STYLE.SPACING_X, STYLE.SPACING_Y)
+        with dpg.theme_component(dpg.mvChildWindow):
+            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, STYLE.SESSION_BACKGROUND_COLOR)
+            dpg.add_theme_color(dpg.mvThemeCol_Border, STYLE.SESSION_BORDER_COLOR)
+            dpg.add_theme_style(dpg.mvStyleVar_ChildBorderSize, STYLE.TABLE_BORDER)
+            dpg.add_theme_style(dpg.mvStyleVar_ChildRounding, STYLE.TABLE_CORNER_RADIUS)
+
+    # TABLE THEME
+    with dpg.theme(tag="default_table_theme"):
+        with dpg.theme_component(dpg.mvTable):
+            dpg.add_theme_color(
+                dpg.mvThemeCol_Border,
+                STYLE.SESSION_BORDER_COLOR
+            )
+            dpg.add_theme_style(dpg.mvStyleVar_FrameBorderSize, STYLE.TABLE_BORDER)
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding,STYLE.TABLE_CORNER_RADIUS)

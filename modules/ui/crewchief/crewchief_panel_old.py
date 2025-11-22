@@ -200,7 +200,7 @@ class CrewChiefPanel(BasePanel):
         - Simple labels for general info
         - A real DPG table for illegal stints
         """
-        style = self.ctx.ui  # convenience alias
+        style = self.ctx.styles  # convenience alias
 
         # -----------------------------------------
         # Section Header
@@ -266,7 +266,7 @@ class CrewChiefPanel(BasePanel):
         - Simple labels for general info
         - No table is required for this result type
         """
-        style = self.ctx.ui  # convenience alias
+        style = self.ctx.styles  # convenience alias
 
         # -----------------------------------------
         # Section Header

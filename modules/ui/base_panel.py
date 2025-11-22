@@ -11,8 +11,13 @@ class BasePanel:
     """
 
     LABEL = "Panel"
+    TAG = "tag"
     INPUT_GRID = None
     DEFAULT_WIDTH = 180
+
+    header_tag = None
+    header_theme_tag = None
+    header_theme = None
 
     def __init__(self, ctx: AppContext):
         self.ctx = ctx
@@ -38,7 +43,7 @@ class BasePanel:
     # -----------------------------------------------------
     def build(self):
         """Main entry point for building this panel."""
-        dpg.add_text(self.label)
+        dpg.add_text(self.LABEL)
         dpg.add_separator()
 
         # Auto-build grid if defined
@@ -298,4 +303,20 @@ class BasePanel:
         elif style == "output":
             dpg.bind_item_theme(tag, "theme_output")
             dpg.configure_item(tag, readonly=True)
+
+
+    # -----------------------
+    # THEME BUILDERS
+    # -----------------------
+    def build_title_header_theme(self):
+        with dpg.theme(tag=self.header_theme_tag) as theme:
+            with dpg.theme_component(dpg.mvText):
+                dpg.add_theme_color(dpg.mvThemeCol_Text, self.ctx.styles.TEXT_LIGHT)
+                dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 4, 4)
+
+                # Optional: background behind the text (requires mvThemeCol_ChildBg or mvThemeCol_WindowBg)
+                dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (40, 40, 40))
+        return theme
+
+
 

@@ -13,10 +13,10 @@ class IRState:
 class IRSDKService:
 
     throttle = {
-        "session": {"last": 0, "cooldown": 2.0},
-        "drivers": {"last": 0, "cooldown": 5.0},
-        "track": {"last": 0, "cooldown": 5.0},
-        "weather": {"last": 0, "cooldown": 5.0},
+        "session": {"last": 0, "cooldown": 30.0},
+        "drivers": {"last": 0, "cooldown": 30.0},
+        "weekend": {"last": 0, "cooldown": 60.0},
+        "weather": {"last": 0, "cooldown": 30.0},
     }
     last_session_tick = None
     session_tracker = None
@@ -25,6 +25,8 @@ class IRSDKService:
     session_data = None
     driver_data = None
     weather_data = None
+    pit_data = None
+    weekend_data = None
 
     def __init__(self, ctx: AppContext):
         self.ctx = ctx
@@ -46,7 +48,7 @@ class IRSDKService:
 
         # currently NOT connected → try to connect
         if self.ir.startup() and self.ir.is_initialized and self.ir.is_connected:
-            self.ctx.logger.debug("IRSDK Connected")
+            self.ctx.logger.debug("IRSDK Connected.\n")
             self.state.ir_connected = True
 
     def detect_session_changes(self):
@@ -140,8 +142,8 @@ class IRSDKService:
             "timing": False,
             "weather": False,
             "session": False,
-            "track": False,
-            "pit_stop": False,
+            "weekend": False,
+            "pitstop": False,
         }
 
         self.check_sim_connection()
@@ -156,7 +158,7 @@ class IRSDKService:
         # This method has no throttling attached to it
         available_updates["timing"] = self.get_timing_data_fast()
 
-        available_updates['pit_stop'] = self.get_pit_stop_data_fast()
+        available_updates['pitstop'] = self.get_pit_stop_data_fast()
 
         # Detect changes across SessionID, SessionNum, SessionState
         session_changes = self.detect_session_changes()
@@ -184,8 +186,67 @@ class IRSDKService:
         available_updates["session"] = self.update_session_status()
         available_updates["drivers"] = self.update_driver_data()
         available_updates["weather"] = self.update_weather_data()
+        available_updates["weekend"] = self.update_weekend_data()
 
         return available_updates
+
+    def update_weekend_data(self):
+        if self.is_throttled("weekend"):
+            return False
+
+        self.weekend_data = {
+            'info': {
+                "TrackName": self.ir["WeekendInfo"]["TrackName"],
+                "TrackID": self.ir["WeekendInfo"]["TrackID"],
+                "TrackLengthKM": self.ir["WeekendInfo"]["TrackLength"],
+                "TrackDisplayName": self.ir["WeekendInfo"]["TrackDisplayName"],
+                "TrackDisplayShortName": self.ir["WeekendInfo"]["TrackDisplayShortName"],
+                "TrackConfigName": self.ir["WeekendInfo"]["TrackConfigName"],
+                "TrackCity": self.ir["WeekendInfo"]["TrackCity"],
+                "TrackCountry": self.ir["WeekendInfo"]["TrackCountry"],
+                "TrackAltitudeM": self.ir["WeekendInfo"]["TrackAltitude"],
+                "TrackLatitude": self.ir["WeekendInfo"]["TrackLatitude"],
+                "TrackLongitude": self.ir["WeekendInfo"]["TrackLongitude"],
+                "TrackNorthOffsetRad": self.ir["WeekendInfo"]["TrackNorthOffset"],
+                "TrackNumTurns": self.ir["WeekendInfo"]["TrackNumTurns"],
+                "TrackPitSpeedLimitKPH": self.ir["WeekendInfo"]["TrackPitSpeedLimit"],
+                "TrackType": self.ir["WeekendInfo"]["TrackType"],
+                "TrackWeatherType": self.ir["WeekendInfo"]["TrackWeatherType"],
+                "TrackSkies": self.ir["WeekendInfo"]["TrackSkies"],
+                "TrackSurfaceTempC": self.ir["WeekendInfo"]["TrackSurfaceTemp"],
+                "TrackAirTempC": self.ir["WeekendInfo"]["TrackAirTemp"],
+                "TrackAirPressureHg": self.ir["WeekendInfo"]["TrackAirPressure"],
+                "TrackWindVelMS": self.ir["WeekendInfo"]["TrackWindVel"],
+                "TrackWindDirRad": self.ir["WeekendInfo"]["TrackWindDir"],
+                "TrackRelativeHumidityPct": self.ir["WeekendInfo"]["TrackRelativeHumidity"],
+                "TrackFogLevelPct": self.ir["WeekendInfo"]["TrackFogLevel"],
+                "TrackCleanup": self.ir["WeekendInfo"]["TrackCleanup"],
+                "TrackDynamicTrack": self.ir["WeekendInfo"]["TrackDynamicTrack"],
+            },
+            'options': {
+                "NumStarters": self.ir["WeekendInfo"]["WeekendOptions"]["NumStarters"],
+                "StartingGrid": self.ir["WeekendInfo"]["WeekendOptions"]["StartingGrid"],
+                "QualifyScoring": self.ir["WeekendInfo"]["WeekendOptions"]["QualifyScoring"],
+                "CourseCautions": self.ir["WeekendInfo"]["WeekendOptions"]["CourseCautions"],
+                "StandingStart": self.ir["WeekendInfo"]["WeekendOptions"]["StandingStart"],
+                "Restarts": self.ir["WeekendInfo"]["WeekendOptions"]["Restarts"],
+                "WeatherType": self.ir["WeekendInfo"]["WeekendOptions"]["WeatherType"],
+                "Skies": self.ir["WeekendInfo"]["WeekendOptions"]["Skies"],
+                "WindDirection": self.ir["WeekendInfo"]["WeekendOptions"]["WindDirection"],
+                "WindSpeed": self.ir["WeekendInfo"]["WeekendOptions"]["WindSpeed"],
+                "WeatherTemp": self.ir["WeekendInfo"]["WeekendOptions"]["WeatherTemp"],
+                "RelativeHumidity": self.ir["WeekendInfo"]["WeekendOptions"]["RelativeHumidity"],
+                "FogLevel": self.ir["WeekendInfo"]["WeekendOptions"]["FogLevel"],
+                "Unofficial": self.ir["WeekendInfo"]["WeekendOptions"]["Unofficial"],
+                "CommercialMode": self.ir["WeekendInfo"]["WeekendOptions"]["CommercialMode"],
+                "NightMode": self.ir["WeekendInfo"]["WeekendOptions"]["NightMode"],
+                "IsFixedSetup": self.ir["WeekendInfo"]["WeekendOptions"]["IsFixedSetup"],
+                "StrictLapsChecking": self.ir["WeekendInfo"]["WeekendOptions"]["StrictLapsChecking"],
+                "HasOpenRegistration": self.ir["WeekendInfo"]["WeekendOptions"]["HasOpenRegistration"],
+            }
+        }
+
+        return True
 
     def get_player_car_idx(self):
         return self.session_data['PlayerCarIdx'] or self.ir['PlayerCarIdx'] or None
@@ -334,85 +395,44 @@ class IRSDKService:
     def get_pit_stop_data_fast(self):
         player_car_idx = self.ir['PlayerCarIdx']
 
-        # 1. BOX BOX BOX - APPROACHING PIT LANE
-        if self.ir['CarIdxTrackSurface'][player_car_idx] == self.constants.ON_PIT_LANE and self.pitcrew.approaching_pits is False:
-            self.pitcrew.box_box_box(self.ir['SessionTime'], self.ir['CarIdxLap'][player_car_idx])
+        # Enable test mode for replays in debug mode.
+        self.pitcrew.set_test_mode(self.ir['IsReplayPlaying'] and self.ctx.settings.get('debug', False))
 
-        # 2. ON THE PIT LANE APPROACHING THE PIT BOX
-        if bool(self.ir['CarIdxOnPitRoad'][player_car_idx]) is True and self.pitcrew.on_pit_lane is False:
-            self.pitcrew.approaching_pit_box(self.ir['SessionTime'])
+        updated = self.pitcrew.update(
+            surface=self.ir['CarIdxTrackSurface'][player_car_idx],
+            on_pit_road=self.ir['OnPitRoad'],
+            car_idx_on_pit_road=self.ir['CarIdxOnPitRoad'][player_car_idx],
+            pitstop_active=self.ir['PitstopActive'],
+            sv_status=self.ir['PlayerCarPitSvStatus'],
+            session_time = self.ir['SessionTime'],
+            car_idx_lap = self.ir['CarIdxLap'][player_car_idx],
+            sv_flags = self.ir['PitSvFlags'],
+            fuel_level = self.ir['FuelLevel'],
+            tow_time = self.ir['PlayerCarTowTime'],
+            repairs = self.ir['PitRepairLeft'],
+            opt_repairs = self.ir['PitOptRepairLeft'],
+            velocity_z = self.ir['VelocityZ']
+        )
 
-        # 3. SERVICING THE CAR
-        if self.pitcrew.on_pit_lane and bool(self.ir['PitstopActive']):
-            self.ctx.logger.debug(f"SERVICING THE CAR at{self.ir['SessionTime']}.")
-            self.pitcrew.in_pit_box(self.ir['SessionTime'], self.ir['FuelLevel'], self.ir['PitSvFlags'])
+        if updated:
+            self.pit_data = self.pitcrew.get_completed_pit_report()
+            self.pit_data['tyre_usage'] = self.get_tyre_report()
 
-            self.pitcrew.on_jack_monitoring(self.ir['SessionTime'], self.ir['VelocityZ'])
+        return updated
 
-            # If we have not started the pit stop then track repairs.
-            if not self.pitcrew.pit_stop_active:
-                self.pitcrew.update_on_repairs(
-                    self.ir['PlayerCarTowTime'],
-                    self.ir['PitRepairLeft'],#
-                    self.ir['PitOptRepairLeft']
-                )
+    def get_tyre_report(self):
+        # Add the tyre wear & temps from the Pit Stop
+        return {
+            'LFtempCL': self.ir['LFtempCL'], 'LFtempCM': self.ir['LFtempCM'], 'LFtempCR': self.ir['LFtempCR'],
+            'LFwearL': self.ir['LFwearL'], 'LFwearM': self.ir['LFwearM'], 'LFwearR': self.ir['LFwearR'],
+            'RFtempCL': self.ir['RFtempCL'], 'RFtempCM': self.ir['RFtempCM'], 'RFtempCR': self.ir['RFtempCR'],
+            'RFwearL': self.ir['RFwearL'], 'RFwearM': self.ir['RFwearM'], 'RFwearR': self.ir['RFwearR'],
+            'LRtempCL': self.ir['LRtempCL'], 'LRtempCM': self.ir['LRtempCM'], 'LRtempCR': self.ir['LRtempCR'],
+            'LRwearL': self.ir['LRwearL'], 'LRwearM': self.ir['LRwearM'], 'LRwearR': self.ir['LRwearR'],
+            'RRtempCL': self.ir['RRtempCL'], 'RRtempCM': self.ir['RRtempCM'], 'RRtempCR': self.ir['RRtempCR'],
+            'RRwearL': self.ir['RRwearL'], 'RRwearM': self.ir['RRwearM'], 'RRwearR': self.ir['RRwearR'],
+        }
 
-        # Pit Service is in progress or starting
-        if self.ir['PlayerCarPitSvStatus'] == self.constants.PIT_SV_IN_PROGRESS and self.pitcrew.service_in_progress is False:
-            self.ctx.logger.info(f"Pit Status In Progress Starting Now: {self.ir['SessionTime']}")
-            self.pitcrew.service_in_progress = True
-        # Pit Service is completed
-        elif self.ir['PlayerCarPitSvStatus'] == self.constants.PIT_SV_COMPLETE and self.pitcrew.service_in_progress is True:
-            self.ctx.logger.info(f"Pit Status Completed Now: {self.ir['SessionTime']}")
-            self.pitcrew.service_in_progress = False
-
-        # PIT STOP INACTIVE: We have stopped servicing but have not left the box.
-        if self.pitcrew.pit_stop_active and not bool(self.ir['PitstopActive']):
-            self.pitcrew.in_pit_box(self.ir['SessionTime'], self.ir['FuelLevel'], self.ir['PitSvFlags'])
-            self.pitcrew.service_completed(self.ir['SessionTime'])
-            self.ctx.logger.info(f"Pit Servicing Completed at {self.ir['SessionTime']}")
-
-        # PIT STOP END: If on_pit_lane is true, car_idx_on_pit_road is True we are exiting the pits.
-        if self.pitcrew.on_pit_lane is True and bool(self.ir['CarIdxOnPitRoad'][player_car_idx]) is False:
-
-            # It's possible to miss the service finishing so if pit_stop_active still true we record it here.
-            if self.pitcrew.pit_stop_active:
-                self.pitcrew.in_pit_box(self.ir['SessionTime'], self.ir['FuelLevel'], self.ir['PitSvFlags'])
-                self.pitcrew.service_completed(self.ir['SessionTime'])
-                self.ctx.logger.info(f"Pit Servicing Ended at {self.ir['SessionTime']}")
-            else:
-                self.pitcrew.in_pit_box(self.ir['SessionTime'], self.ir['FuelLevel'], self.ir['PitSvFlags'])
-
-        # LEAVING PIT LANE: If on_pit_lane is true and car_idx_on_pit_road has turned False we have just left the pits.
-        if self.pitcrew.on_pit_lane is True and bool(self.ir['CarIdxOnPitRoad'][player_car_idx]) is False:
-            self.pitcrew.leaving_pit_box(self.ir['SessionTime'])
-
-            # self.pit_data = self.pit_stop_object.get_pit_data_dict()
-            self.ctx.logger.info(f"Pit Left Pits at {self.ir['SessionTime']}")
-
-        # LEFT THE PITS:
-        # If we have previously approached the pits and are neither IN_PIT_BOX or ON_PIT_LANE, we have left the pits
-        in_pit_location = self.ir['CarIdxTrackSurface'][player_car_idx] not in (self.constants.IN_PIT_BOX, self.constants.ON_PIT_LANE)
-        if self.pitcrew.approaching_pits is True and in_pit_location:
-            self.pitcrew.leaving_pit_lane(self.ir['SessionTime'])
-
-            # Add the tyre wear & temps from the Pit Stop
-            self.pitcrew.tyre_data = {
-                'LFtempCL': self.ir['LFtempCL'], 'LFtempCM': self.ir['LFtempCM'], 'LFtempCR': self.ir['LFtempCR'],
-                'LFwearL': self.ir['LFwearL'], 'LFwearM': self.ir['LFwearM'], 'LFwearR': self.ir['LFwearR'],
-                'RFtempCL': self.ir['RFtempCL'], 'RFtempCM': self.ir['RFtempCM'], 'RFtempCR': self.ir['RFtempCR'],
-                'RFwearL': self.ir['RFwearL'], 'RFwearM': self.ir['RFwearM'], 'RFwearR': self.ir['RFwearR'],
-                'LRtempCL': self.ir['LRtempCL'], 'LRtempCM': self.ir['LRtempCM'], 'LRtempCR': self.ir['LRtempCR'],
-                'LRwearL': self.ir['LRwearL'], 'LRwearM': self.ir['LRwearM'], 'LRwearR': self.ir['LRwearR'],
-                'RRtempCL': self.ir['RRtempCL'], 'RRtempCM': self.ir['RRtempCM'], 'RRtempCR': self.ir['RRtempCR'],
-                'RRwearL': self.ir['RRwearL'], 'RRwearM': self.ir['RRwearM'], 'RRwearR': self.ir['RRwearR'],
-            }
-
-            self.pitcrew.get_jack_time_report()
-
-
-
-        return False
 
 
 

@@ -6,7 +6,9 @@ from modules.ui.base_panel import BasePanel
 
 class TimingPanel(BasePanel):
     LABEL = "Timing"
+    TAG = "timing_panel"
     MAX_CARS = 64
+
     TIMING_TABLE_SCHEMA = {
         "CarIdxPosition": {"label": "Pos", "tag": "car_idx_pos", "datatype": "int", "default": ""},
         "CarIdxClassPosition": {"label": "Class Pos", "tag": "car_idx_class_pos", "datatype": "int", "default": ""},
@@ -22,24 +24,33 @@ class TimingPanel(BasePanel):
     }
 
     # Tags in the Timing Table for quick updating of timing data
+    table_tag = None
     timing_table_tags = None
 
     def __init__(self, ctx):
         super().__init__(ctx)
+        self.header_tag = f"{self.TAG}_header"
+        self.header_theme_tag = f"{self.header_tag}_theme"
 
-        self.create_row_themes()
+        self.header_theme = self.build_title_header_theme()
+        self.table_header_theme = self.build_table_header_theme()
+        self.build_table_row_themes()
 
     def build(self):
-        """Builds the timing table inside the tab created by MainUI."""
 
+        # Make Header
+        self.header_tag = f"{self.TAG}_header"
+        self.table_tag = f"{self.TAG}_table"
+        dpg.add_text(self.LABEL, tag=self.header_tag)
 
-        dpg.add_text("Live Timing")
-        dpg.add_separator()
+        # Bind header theme
+        dpg.bind_item_theme(self.header_tag, self.header_theme)
+        dpg.bind_item_font(self.header_tag, self.ctx.font_manager.title)
 
-        # Build static table structure from schema
-        self.timing_table_tags = self.build_timing_table(
-            schema=self.TIMING_TABLE_SCHEMA
-        )
+        # Build Timing Table
+        self.timing_table_tags = self.build_timing_table(self.TIMING_TABLE_SCHEMA)
+
+        dpg.bind_item_theme(self.table_tag, self.table_header_theme)
 
     def build_timing_table(self, schema: dict):
         """
@@ -52,9 +63,10 @@ class TimingPanel(BasePanel):
             dict[(schema_key, row)] = cell_tag
         """
         with dpg.table(
-                tag="timing_table",
+                tag=self.table_tag ,
                 header_row=True,
                 resizable=True,
+                borders_outerV=True,
                 borders_outerH=True,
                 borders_innerV=True,
                 borders_innerH=True
@@ -76,16 +88,6 @@ class TimingPanel(BasePanel):
 
         return cell_tags
 
-    def create_row_themes(self):
-        with dpg.theme() as self.theme_row_highlight:
-            with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 255, 0))  # yellow text
-                dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (50, 50, 50))
-                dpg.add_theme_color(dpg.mvThemeCol_Header, (40, 40, 40))
-
-        with dpg.theme() as self.theme_row_normal:
-            with dpg.theme_component(dpg.mvAll):
-                dpg.add_theme_color(dpg.mvThemeCol_Text, (220, 220, 220))
 
     def update(self, update_data: dict):
         if update_data['timing_data'] is None:
@@ -197,4 +199,38 @@ class TimingPanel(BasePanel):
         # Fallback – return raw
         return str(value)
 
+    # -----------------------
+    # THEME BUILDERS
+    # -----------------------
+    def build_table_header_theme(self):
+        """
+        Theme for the header row of the timing table.
+        Applies only to header cells.
+        """
+        with dpg.theme() as table_header_theme:
+            with dpg.theme_component(dpg.mvTable):
+                # Text color
+                dpg.add_theme_color(dpg.mvThemeCol_Text, self.ctx.styles.TEXT_LIGHT)
+
+                # Background colors for the header
+                dpg.add_theme_color(dpg.mvThemeCol_Header, self.ctx.styles.PRIMARY_ORANGE_DEFAULT)
+                dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (65, 65, 85))
+                dpg.add_theme_color(dpg.mvThemeCol_HeaderActive, (85, 85, 115))
+
+                # Optional: padding + border
+                dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 4, 4)
+                dpg.add_theme_color(dpg.mvThemeCol_Border, self.ctx.styles.PRIMARY_ORANGE_DEFAULT)
+
+        return table_header_theme
+
+    def build_table_row_themes(self):
+        with dpg.theme() as self.theme_row_highlight:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 255, 0))  # yellow text
+                dpg.add_theme_color(dpg.mvThemeCol_HeaderHovered, (50, 50, 50))
+                dpg.add_theme_color(dpg.mvThemeCol_Header, (40, 40, 40))
+
+        with dpg.theme() as self.theme_row_normal:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_color(dpg.mvThemeCol_Text, (220, 220, 220))
 

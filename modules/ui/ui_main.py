@@ -1,11 +1,12 @@
 # ui/ui_main.py
 import dearpygui.dearpygui as dpg
 
-from modules.ui.help_panel import HelpPanel
-from modules.ui.settings_panel import SettingsPanel
-from modules.ui.timing_panel import TimingPanel
-from modules.ui.crewchief_panel import CrewChiefPanel
-from modules.ui.dashboard_panel import DashPanel
+from modules.ui.help.help_panel import HelpPanel
+from modules.ui.info.info_panel import InfoPanel
+from modules.ui.settings.settings_panel import SettingsPanel
+from modules.ui.timing.timing_panel import TimingPanel
+from modules.ui.crewchief.crewchief_panel import CrewChiefPanel
+from modules.ui.dashboard.dashboard_panel import DashPanel
 
 class UIMain:
     """
@@ -27,15 +28,18 @@ class UIMain:
     def __init__(self, ctx):
         self.ctx = ctx
 
+        self.crewchief_panel = CrewChiefPanel(ctx)
+
         # Store panels keyed by a stable tab tag.
         # Each panel receives the shared context.
         self.panels = {
-            "dashboard": DashPanel(ctx),
             "timing": TimingPanel(ctx),
-            "crew_chief": CrewChiefPanel(ctx),
             "settings": SettingsPanel(ctx),
             "help": HelpPanel(ctx),
         }
+
+        self.dashboard = DashPanel(ctx)
+        self.info_panel = InfoPanel(ctx)
 
         # Track which tab is active so update loops know where to route UI updates.
         self.active_tab = None
@@ -55,15 +59,20 @@ class UIMain:
             # The callback fires whenever a new tab becomes active.
             with dpg.tab_bar(callback=self.on_tab_changed, tag="main_tab_bar"):
 
+                self.crewchief_panel.build()
+                self.dashboard.build()
+                self.info_panel.build()
+
                 # Build each panel inside its own tab item.
                 for tag, panel in self.panels.items():
                     with dpg.tab(label=panel.LABEL, tag=tag):
                         panel.build()
 
             # The first panel is activated by default after build.
-            first_tag = next(iter(self.panels.keys()))
-            self.active_tab = first_tag
-            self.panels[first_tag].on_show()
+            if len(self.panels) > 1:
+                first_tag = next(iter(self.panels.keys()))
+                self.active_tab = first_tag
+                self.panels[first_tag].on_show()
 
     def on_tab_changed(self, sender, app_data):
         """
@@ -75,7 +84,7 @@ class UIMain:
         """
         # Resolve the actual tag (your string like "timing", "dashboard")
         tab_alias = dpg.get_item_alias(app_data)
-        self.ctx.logger.debug(f"Tab Changed: {tab_alias}")
+        # self.ctx.logger.debug(f"Tab Changed: {tab_alias}")
 
         # Update active tab tracking.
         self.active_tab = tab_alias

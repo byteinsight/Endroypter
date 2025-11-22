@@ -4,6 +4,9 @@ import logging
 from pathlib import Path
 import sys
 
+from modules.core.ui_style import UIStyle
+from modules.core.ui_fonts import FontManager
+
 # ============================================================
 # APPLICATION NAME
 # ============================================================
@@ -32,17 +35,6 @@ CONFIG_FOLDER = HOME_PATH / "config"
 
 for f in (LOG_FOLDER, REPLAY_FOLDER, CONFIG_FOLDER):
     f.mkdir(parents=True, exist_ok=True)
-
-# ============================================================
-# UIStyle Configuration (fixed, NOT user editable)
-# ============================================================
-class UIStyle:
-    HEADER = (220, 220, 255, 255)
-    WARNING = (255, 120, 120, 255)
-    WARNING_LABEL = (255, 200, 180, 255)
-    INFO = (255, 255, 180, 255)
-    SUGGESTION = (255, 170, 100, 255)
-    SECTION_LABEL = (230, 230, 230, 255)
 
 # ============================================================
 # System Configuration (fixed, NOT user editable)
@@ -83,18 +75,26 @@ class AppContext:
     _instance = None
 
     @staticmethod
-    def instance():
+    def instance(root_path=None):
+        """ Root Path is mandatory at first call for the purposes of loading our fonts"""
         if AppContext._instance is None:
-            AppContext()
+            if root_path is None:
+                raise RuntimeError("AppContext.instance() called before initialization.")
+            AppContext(root_path)
         return AppContext._instance
 
-    def __init__(self):
+    def __init__(self, root_path):
+
+        # The singleton has already been created.
+        # Avoid reinitializing state or overwriting existing configuration.
         if AppContext._instance is not None:
             return  # Singleton
 
+        # Get the core system config.
         self.system = SystemConfig()
 
         # Paths
+        self.root_path = root_path
         self.home = HOME_PATH
         self.log_folder = LOG_FOLDER
         self.replay_folder = REPLAY_FOLDER
@@ -109,7 +109,12 @@ class AppContext:
         # Logging
         self.logger = self._init_logging()
 
-        self.ui = UIStyle()
+        # Get the UIStyle Data Store for all the colors, border styles etc.
+        self.styles = UIStyle()
+        self.logger.info("Styles loaded.")
+
+        self.font_manager = FontManager(self.root_path, self.logger)
+        self.logger.info("Font Manager created.")
 
         AppContext._instance = self
 

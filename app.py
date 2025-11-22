@@ -26,15 +26,21 @@ class App:
     # -------------------------------------------------------
     # APP INIT - called once by static main method
     # -------------------------------------------------------
-    def __init__(self, width: int = 1200, height: int = 840):
+    def __init__(self, root_path, width: int = 1200, height: int = 840):
+
         # Create or load global application context
-        self.ctx = AppContext.instance()
+        # This also loads ui_styles and creates a font_manager
+        self.ctx = AppContext.instance(root_path)
 
         self.width = width
         self.height = height
 
         # DPG context must be created before any UI operations
         dpg.create_context()
+
+        # Load the fonts
+        self.ctx.font_manager.load()
+        self.ctx.logger.info(f"Font manager loaded Ok.")
 
         # Create OS-level viewport
         dpg.create_viewport(
@@ -86,6 +92,7 @@ class App:
 
         # Ensure our defined main window gets focus & sizing
         dpg.set_primary_window("main_window", True)
+        self.ctx.logger.info("Setting Primary Window.")
 
         # Get primary monitor resolution
         viewport_width = dpg.get_viewport_client_width()
@@ -94,6 +101,7 @@ class App:
 
         # Enter the DPG event loop
         dpg.start_dearpygui()
+        self.ctx.logger.debug(f"Application has started.")
 
         # After loop exits (window closed)
         self.shutdown()
@@ -108,18 +116,33 @@ class App:
 
         while self.sdk_polling_running:
             try:
-                # Get data from the background task
-                # Potential updates include: timing, weather, session, track
+                # Get available incremental updates
                 available_updates = self.ir.get_update()
 
-                # If timing data changed, push to the TimingPanel (visible-only)
+                # 1. Timing update goes separately since it's visible-only
                 if available_updates.get("timing"):
                     self.timer_panel_updates()
 
+                # 2. Build delta payload for dashboard
+                dashboard_payload = {}
+
                 if available_updates.get("session"):
-                    dashboard_panel = self.ui.panels.get("dashboard")
-                    combined_data = {"session_data": getattr(self.ir, "session_data", None)}
-                    dashboard_panel.update(combined_data)
+                    dashboard_payload["session_data"] = getattr(self.ir, "session_data", None)
+
+                if available_updates.get("weather"):
+                    dashboard_payload["weather_data"] = getattr(self.ir, "weather_data", None)
+
+                if available_updates.get("pitstop"):
+                    dashboard_payload["pit_data"] = getattr(self.ir, "pit_data", None)
+
+                # 3. Only push if something changed
+                if dashboard_payload:
+                    self.ui.dashboard.update(dashboard_payload)
+
+                # 4. Track Updates
+                if available_updates['weekend']:
+                    weekend_data = getattr(self.ir, "weekend_data", None)
+                    self.ui.info_panel.update(weekend_data)
 
             except Exception as error:
                 self.ctx.logger.error(f"Error in iRSDK Polling Loop: {error}")
@@ -160,9 +183,9 @@ class App:
     # Convenience entry point.
     # -------------------------------------------------------
     @staticmethod
-    def main():
+    def main(root_path):
         """Convenience entry point."""
-        app = App()
+        app = App(root_path)
         app.build_ui()
         app.run()
 
@@ -171,4 +194,15 @@ class App:
 # Standard entry point
 # -------------------------------------------
 if __name__ == "__main__":
-    App.main()
+    import os
+    import sys
+
+    # Set some paths depending on whether we are running as a python package or script
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        icon_path = os.path.join(sys._MEIPASS, "iRaceInsight.ico")
+        system_path = os.path.join(sys._MEIPASS)
+    else:
+        icon_path = os.path.join("iRaceInsight.ico")
+        system_path = "."
+
+    App.main(system_path)

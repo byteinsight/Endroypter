@@ -89,7 +89,7 @@ def render_markdown(path, parent):
 # -------------------------------------------------------------
 class HelpPanel(BasePanel):
     LABEL = "Help"
-
+    root_tag = "help_panel"
     HELP_FILE = "README.md"   # <- Change this as needed
 
     def __init__(self, ctx):
@@ -97,8 +97,6 @@ class HelpPanel(BasePanel):
         self.ctx = ctx
 
     def build(self):
-        """Loads and displays the help markdown file."""
-
         dpg.add_text("Help & Documentation")
         dpg.add_separator()
 
